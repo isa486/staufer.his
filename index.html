@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial de Mantenimiento de Máquinas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>STAUFER DIE CASTING</h1>
+    <h2>Historial Digital de Mantenimiento</h2>
+  </header>
+  <main>
+    <section class="filtros">
+      <input type="text" id="search-maquina" placeholder="Buscar máquina...">
+      <select id="ubicacion-select"></select>
+    </section>
+    <section id="lista-maquinas">
+      <!-- Cada máquina aparecerá con formato tipo ficha física y es clickeable -->
+    </section>
+    <section id="agregar-maquina">
+      <h3>Agregar nueva máquina</h3>
+      <form id="form-maquina">
+        <input type="text" name="id" placeholder="ID de la máquina" required>
+        <input type="text" name="nombre" placeholder="Nombre de la máquina" required>
+        <input type="text" name="qr" placeholder="Nombre de archivo QR (opcional)">
+        <button type="submit">Agregar máquina</button>
+      </form>
+    </section>
+  </main>
+  <footer>
+    <small>&copy; 2025 STAUFER</small>
+  </footer>
+  <script src="maquinas.js"></script>
+</body>
+</html>
