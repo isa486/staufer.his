@@ -5,78 +5,155 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Historial de Máquina</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>STAUFER DIE CASTING</h1>
-    <h2>Detalles del Historial de la Máquina</h2>
+    <h1>Detalles del Historial de la Máquina</h1>
   </header>
   <main>
     <div id="nombre-maquina"></div>
     <div id="tabs-mantenimientos"></div>
-    <section id="detalle-mantenimiento"></section>
-    <!-- Formulario para agregar mantenimiento -->
-    <section id="agregar-mantenimiento">
-      <h3>Agregar nuevo mantenimiento</h3>
-      <form id="form-mantenimiento">
-        <fieldset>
-          <legend>Información General</legend>
-          <input type="date" name="fecha" required>
-          <input type="text" name="empresa" placeholder="Empresa" required>
-          <input type="text" name="contacto" placeholder="Contacto">
-          <input type="text" name="ubicacion" placeholder="Lugar" required>
-          <input type="text" name="estado" placeholder="Estado">
-          <input type="text" name="tel" placeholder="Teléfono">
-          <input type="text" name="puesto" placeholder="Puesto">
-          <input type="text" name="trabajo" placeholder="Nombre del trabajo" required>
-          <input type="date" name="fecha_compra" placeholder="Fecha de compra">
-          <input type="text" name="quien_realiza" placeholder="Quién realiza" required>
-          <input type="date" name="fecha_instalacion" placeholder="Fecha de instalación">
-        </fieldset>
-        <fieldset>
-          <legend>Información de la Unidad</legend>
-          <input type="text" name="modelo" placeholder="Modelo">
-          <input type="text" name="tipo" placeholder="Tipo">
-          <input type="text" name="serie" placeholder="No. Serie">
-          <input type="text" name="temp_max" placeholder="Temperatura máx.">
-          <input type="text" name="fase" placeholder="Fase del motor">
-          <input type="text" name="voltios" placeholder="Voltios del motor">
-          <input type="text" name="amperaje" placeholder="Amperaje de carga máxima">
-        </fieldset>
-        <fieldset>
-          <legend>Lecturas</legend>
-          <label>Voltaje de toma corriente [volts]: <input type="text" name="toma_corriente"></label>
-          <label>Rampeo corriente: <input type="text" name="rampeo_corriente"></label><br>
-          <label>Voltaje de entrada [volts]: <input type="text" name="entrada"></label>
-          <label>Rampeo entrada: <input type="text" name="rampeo_entrada"></label><br>
-          <label>Voltaje de salida [volts]: <input type="text" name="salida"></label>
-          <label>Rampeo salida: <input type="text" name="rampeo_salida"></label><br>
-          <label>Amperaje [A]: <input type="text" name="amperaje_lectura"></label>
-          <label>Rampeo amperaje: <input type="text" name="rampeo_amperaje"></label><br>
-          <label>Presión caudal [bar]: <input type="text" name="presion"></label>
-          <label>Rampeo presión: <input type="text" name="rampeo_presion"></label><br>
-          <label>Nivel aceite [Lt]: <input type="text" name="aceite"></label>
-          <label>Rampeo aceite: <input type="text" name="rampeo_aceite"></label><br>
-          <label>Temperatura [°C]: <input type="text" name="temperatura"></label>
-          <label>Rampeo temperatura: <input type="text" name="rampeo_temperatura"></label>
-        </fieldset>
-        <fieldset>
-          <legend>Material Utilizado</legend>
-          <textarea name="material_utilizado" placeholder="Material utilizado"></textarea>
-        </fieldset>
-        <fieldset>
-          <legend>Comentarios</legend>
-          <textarea name="comentarios" placeholder="Comentarios"></textarea>
-        </fieldset>
-        <input type="text" name="realizo" placeholder="Realizó (firma)">
-        <input type="text" name="recibio" placeholder="Recibió (firma)">
-        <button type="submit">Agregar mantenimiento</button>
-      </form>
-    </section>
+    <section id="detalle-mantenimiento" class="formato-mantenimiento"></section>
   </main>
   <footer>
     <small>&copy; 2025 STAUFER</small>
   </footer>
-  <script src="maquinas.js"></script>
+  <script>
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
+    function cargarDatosMaquina(idMaquina) {
+      return fetch('data/maquinas.json')
+        .then(res => res.json())
+        .then(maquinas => maquinas.find(m => m.id === idMaquina));
+    }
+
+    function cargarHistorialMantenimientos(idMaquina) {
+      return fetch(`data/historiales/${idMaquina}.json`)
+        .then(res => res.json());
+    }
+
+    function renderHistorial() {
+      const idMaquina = getQueryParam('id');
+      if (!idMaquina) return;
+
+      Promise.all([
+        cargarDatosMaquina(idMaquina),
+        cargarHistorialMantenimientos(idMaquina)
+      ])
+      .then(([maquina, mantenimientos]) => {
+        const nombreMaquina = document.getElementById('nombre-maquina');
+        const detalle = document.getElementById('detalle-mantenimiento');
+        const tabs = document.getElementById('tabs-mantenimientos');
+
+        if (!maquina) {
+          nombreMaquina.innerHTML = '<h2>Máquina no encontrada</h2>';
+          return;
+        }
+
+        nombreMaquina.innerHTML = `
+          <h2>${maquina.nombre}</h2>
+          ${maquina.qr ? `<img src="qr/${maquina.qr}" alt="QR" class="qr-img">` : ''}`;
+
+        if (!Array.isArray(mantenimientos) || mantenimientos.length === 0) {
+          detalle.innerHTML = '<p>No hay mantenimientos registrados para esta máquina.</p>';
+          tabs.innerHTML = '';
+          return;
+        }
+
+        tabs.innerHTML = '';
+        mantenimientos.forEach((mtto, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'tab-mtto';
+          btn.dataset.idx = idx;
+          btn.textContent = `${mtto.fecha} - ${mtto.trabajo}`;
+          btn.onclick = () => mostrarDetalle(idx);
+          tabs.appendChild(btn);
+        });
+
+        function mostrarDetalle(idx) {
+          const mtto = mantenimientos[idx];
+          let html = `
+            <h3>Mantenimiento del ${mtto.fecha}</h3>
+            <div class="bloque">
+              <table>
+                <tr><td><strong>Trabajo:</strong> ${mtto.trabajo || ''}</td></tr>
+                <tr><td><strong>Empresa:</strong> ${mtto.empresa || ''}</td></tr>
+                <tr><td><strong>Contacto:</strong> ${mtto.contacto || ''}</td></tr>
+                <tr><td><strong>Ubicación:</strong> ${mtto.ubicacion || ''}</td></tr>
+                ${mtto.tel ? `<tr><td><strong>Tel:</strong> ${mtto.tel}</td></tr>` : ''}
+                ${mtto.estado ? `<tr><td><strong>Estado:</strong> ${mtto.estado}</td></tr>` : ''}
+                ${mtto.puesto ? `<tr><td><strong>Puesto:</strong> ${mtto.puesto}</td></tr>` : ''}
+                ${mtto.fecha_compra ? `<tr><td><strong>Fecha de compra:</strong> ${mtto.fecha_compra}</td></tr>` : ''}
+                ${mtto.quien_realiza ? `<tr><td><strong>Quién realiza:</strong> ${mtto.quien_realiza}</td></tr>` : ''}
+                ${mtto.fecha_instalacion ? `<tr><td><strong>Fecha instalación:</strong> ${mtto.fecha_instalacion}</td></tr>` : ''}
+                ${mtto.modelo ? `<tr><td><strong>Modelo:</strong> ${mtto.modelo}</td></tr>` : ''}
+                ${mtto.tipo ? `<tr><td><strong>Tipo:</strong> ${mtto.tipo}</td></tr>` : ''}
+                ${mtto.serie ? `<tr><td><strong>No. Serie:</strong> ${mtto.serie}</td></tr>` : ''}
+                ${mtto.temp_max ? `<tr><td><strong>Temp. máx:</strong> ${mtto.temp_max}</td></tr>` : ''}
+                ${mtto.fase ? `<tr><td><strong>Fase motor:</strong> ${mtto.fase}</td></tr>` : ''}
+                ${mtto.voltios ? `<tr><td><strong>Voltios:</strong> ${mtto.voltios}</td></tr>` : ''}
+                ${mtto.amperaje ? `<tr><td><strong>Amperaje máx:</strong> ${mtto.amperaje}</td></tr>` : ''}
+              </table>
+            </div>
+          `;
+
+          if (mtto.lecturas) {
+            html += '<h4>Lecturas</h4><div class="bloque"><table>';
+            Object.entries(mtto.lecturas).forEach(([clave, valor]) => {
+              const nombre = clave.replace(/_/g, ' ');
+              html += `<tr><td><strong>${nombre}:</strong> ${valor}</td></tr>`;
+            });
+            html += '</table></div>';
+          }
+
+          if (mtto.material_utilizado) {
+            html += `<h4>Material utilizado</h4><div class="material-utilizado">${mtto.material_utilizado}</div>`;
+          }
+
+          html += `
+            <h4>Comentarios</h4>
+            <div class="comentarios">${mtto.comentarios || ''}</div>
+            <div class="firmas">
+              <div class="firma">${mtto.realizo || ''}<br>Realizó</div>
+              <div class="firma">${mtto.recibio || ''}<br>Recibió</div>
+            </div>
+            <div class="acciones-historial">
+              <button onclick="window.print()">Imprimir historial</button>
+              <button onclick="window.location.href='index.html'">Volver al listado</button>
+              <button onclick="exportarPDF()">Exportar a PDF</button>
+            </div>
+          `;
+
+          detalle.innerHTML = html;
+
+          document.querySelectorAll('.tab-mtto').forEach((b, i) => {
+            b.classList.toggle('active', i === idx);
+          });
+        }
+
+        mostrarDetalle(0);
+      })
+      .catch(() => {
+        document.getElementById('detalle-mantenimiento').innerHTML = '<p>Error al cargar los datos de la máquina.</p>';
+      });
+    }
+
+    function exportarPDF() {
+      const element = document.getElementById('detalle-mantenimiento');
+      html2pdf().from(element).set({
+        margin: 10,
+        filename: 'historial_maquina.pdf',
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).save();
+    }
+
+    document.addEventListener('DOMContentLoaded', renderHistorial);
+  </script>
 </body>
 </html>
+
